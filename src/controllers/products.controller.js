@@ -1,24 +1,185 @@
-import { pool } from "../db.js";
+import { getConn, sql, queries } from '../database/index.js'
 
-export const getProducts = async (req, res) => {
-  const [result] = await pool.query("SELECT * FROM products");
-  res.json(result);
+
+export const index = async (req, res) => {
+  res.json({
+    message:
+      "Welcome to Api Node with SQL Server",
+  });
 };
 
+
+//GET ALL
+export const getProducts = async (req, res) => {
+
+  try {
+    
+    const pool = await getConn();
+    const result = await pool.request().query(queries.getAllProducts);  
+    res.json(result.recordset);
+
+  } catch (error) {
+
+    res.status(500);
+    res.send(error.message);
+    
+  }
+  
+};
+
+//GET BY ID
+export const getProductsId = async(req, res) => {
+  
+  const { id } = req.params
+
+  //return res.json({msg : id});
+
+  if (id == null) {
+    return res.status(400).json({msg: "Bad Request"})
+  }
+
+  try {
+
+    const pool = await getConn();
+  
+    const result = await pool
+    .request()        
+    .query(queries.getProductId + id);
+    
+    if (result.rowsAffected == 0 ) return res.json({msg : 0});
+
+    res.json(result.recordset);
+    
+  } catch (error) {
+    
+    res.status(500);
+    res.send(error.message);
+
+  }
+  
+};
+
+//COUNT 
+export const getProductsCount = async (req, res) => {
+
+  try {
+    
+    const pool = await getConn();
+    const result = await pool.request().query(queries.countProducts);  
+    res.json(result.recordset[0]['']);
+
+  } catch (error) {
+
+    res.status(500);
+    res.send(error.message);
+    
+  }
+  
+};
+
+
+//POST
 export const postProducts = async(req, res) => {
 
     const {name, category, material, price, stock} = req.body
-    await pool.query(
-      'INSERT INTO products (name_product,category_product,material_product,price_product,stock_product) VALUES (?,?,?,?,?)', [name, category, material, price, stock]
-    );
+
+    //console.log(req.body)
+
+    if (name == null || category == null || material == null || price == null || stock == null) {
+      return res.status(400).json({msg: "Bad Request"})
+    }
+
+    try {
+      
+      const pool = await getConn();
     
-    res.send('Post success');
+      await pool
+      .request()
+      .input("name", sql.VarChar, name)
+      .input("category", sql.VarChar, category)
+      .input("material", sql.VarChar, material)
+      .input("price", sql.Decimal, price)
+      .input("stock", sql.Int, stock)
+      .query(queries.addProduct);
+          
+      res.send('Post success');
+
+    } catch (error) {
+
+      res.status(500);
+      res.send(error.message);
+      
+    }
 };
 
-export const putProducts = (req, res) => {
-  res.send("add product");
+
+//PUT
+export const putProducts = async(req, res) => {
+  
+    const { id } = req.params  
+    const {name, category, material, price, stock} = req.body  
+
+    if (id == null) {
+      return res.status(400).json({msg: "Bad Request"})
+    }
+    
+
+    try {
+      
+      const pool = await getConn();
+    
+      const result = await pool
+      .request()
+      .input("name", sql.VarChar, name)
+      .input("category", sql.VarChar, category)
+      .input("material", sql.VarChar, material)
+      .input("price", sql.Decimal, price)
+      .input("stock", sql.Int, stock)
+      .query(queries.updateProduct + id);
+          
+      if (result.rowsAffected == 0 ) return res.json({msg : 0});
+
+      res.json({msg : result.rowsAffected + ' row affected'});
+
+    } catch (error) {
+
+      res.status(500);
+      res.send(error.message);
+      
+    }
+
 };
 
-export const deleteProducts = (req, res) => {
-  res.send("add product");
+
+
+//DELETE
+export const deleteProducts = async(req, res) => {
+  
+    const { id } = req.params
+
+    //return res.json({msg : id});
+
+    if (id == null) {
+      return res.status(400).json({msg: "Bad Request"})
+    }
+
+    try {
+      
+      const pool = await getConn();
+    
+      const result = await pool
+      .request()        
+      .query( queries.deleteProduct + id);
+      
+      if (result.rowsAffected == 0 ) return res.json({msg: 0});
+      
+      res.json({msg: result.rowsAffected + ' rows deleted'})
+
+    } catch (error) {
+
+      res.status(500);
+      res.send(error.message);
+      
+    }    
+
 };
